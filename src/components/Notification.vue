@@ -4,12 +4,9 @@
       <a target="_blank" rel="noreferrer" v-bind:href="urlPrefix + '/' + accountId">{{ accountId }}</a>
       <br />
       {{ msg }}
-      <br />in contract:
-      <a
-        target="_blank"
-        rel="noreferrer"
-        v-bind:href="urlPrefix + '/' + contractId"
-      >{{ contractId }}</a>
+      <br />
+      in contract:
+      <a target="_blank" rel="noreferrer" v-bind:href="urlPrefix + '/' + contractId">{{ contractId }}</a>
       <footer>
         <div>✔ Succeeded</div>
         <div>Just now</div>
@@ -20,7 +17,7 @@
 
 <script>
 export default {
-  name: "Notification",
+  name: 'Notification',
   props: {
     networkId: String,
     msg: String,
@@ -28,11 +25,11 @@ export default {
   },
   computed: {
     urlPrefix() {
-      return "https://explorer." + this.networkId + ".near.org/accounts"
+      return 'https://explorer.' + this.networkId + '.near.org/accounts'
     },
     accountId() {
       return window.accountId
-    }
-  }
+    },
+  },
 }
 </script>
