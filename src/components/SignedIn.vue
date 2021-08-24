@@ -1,72 +1,17 @@
 <template>
   <div>
-    <button class="link" style="float: right" v-on:click="logout">Sign out</button>
+    <Slider v-model="value" range />
+    <button class="link" style="float: right" @click="logout">Sign out</button>
     <main>
-      <h1>
-        <label for="greeting" style="color: var(--secondary);border-bottom: 2px solid var(--secondary);">
-          {{ savedGreeting }}
-        </label>
-        {{ accountId }}
-      </h1>
-      <form v-on:submit.prevent="saveGreeting">
+      <form @submit.prevent="saveSecret">
         <fieldset ref="fieldset">
           <label for="greeting" style="display:block; color:var(--gray);margin-bottom:0.5em;">Change greeting</label>
           <div style="display:flex">
             <input v-model="newGreeting" autocomplete="off" id="greeting" style="flex:1" />
-            <button id="save" style="border-radius:0 5px 5px 0">Save</button>
+            <button id="save" @click="saveSecret" style="border-radius:0 5px 5px 0">Save</button>
           </div>
         </fieldset>
       </form>
-      <p>Look at that! A Hello World app! This greeting is stored on the NEAR blockchain. Check it out:</p>
-      <ol>
-        <li>
-          Look in
-          <code>src/App.vue</code>
-          and
-          <code>src/utils.js</code>
-          - you'll see
-          <code>get_greeting</code>
-          and
-          <code>set_greeting</code>
-          being called on
-          <code>contract</code>
-          . What's this?
-        </li>
-        <li>
-          Ultimately, this
-          <code>contract</code>
-          code is defined in
-          <code>assembly/main.ts</code>
-          - this is the source code for your
-          <a target="_blank" rel="noreferrer" href="https://docs.near.org/docs/develop/contracts/overview">
-            smart contract
-          </a>
-          .
-        </li>
-        <li>
-          When you run
-          <code>npm run dev</code>
-          or
-          <code>yarn dev</code>
-          , the code in
-          <code>assembly/main.ts</code>
-          gets deployed to the NEAR testnet. You can see how this happens by looking in
-          <code>package.json</code>
-          at the
-          <code>scripts</code>
-          section to find the
-          <code>dev</code>
-          command.
-        </li>
-      </ol>
-      <hr />
-      <p>
-        To keep learning, check out
-        <a target="_blank" rel="noreferrer" href="https://docs.near.org">the NEAR docs</a>
-        or look through some
-        <a target="_blank" rel="noreferrer" href="https://examples.near.org">example apps</a>
-        .
-      </p>
     </main>
 
     <Notification
@@ -103,6 +48,7 @@ export default {
       savedGreeting: '',
       newGreeting: '',
       notificationVisible: false,
+      value: [20, 50],
     }
   },
 
@@ -130,7 +76,7 @@ export default {
       })
     },
 
-    saveGreeting: async function(event) {
+    saveSecret: async function() {
       // fired on form submit button used to update the greeting
 
       // disable the form while the value gets updated on-chain

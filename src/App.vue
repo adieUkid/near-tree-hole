@@ -6,7 +6,8 @@
 </template>
 
 <script>
-import './global.css'
+// import './global.css'
+import 'view-design/dist/styles/iview.css'
 import getConfig from './config'
 import SignedOut from './components/SignedOut.vue'
 import SignedIn from './components/SignedIn.vue'
