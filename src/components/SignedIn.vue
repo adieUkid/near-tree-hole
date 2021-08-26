@@ -1,54 +1,73 @@
 <template>
   <div>
-    <Slider v-model="value" range />
-    <button class="link" style="float: right" @click="logout">Sign out</button>
-    <main>
-      <form @submit.prevent="saveSecret">
-        <fieldset ref="fieldset">
-          <label for="greeting" style="display:block; color:var(--gray);margin-bottom:0.5em;">Change greeting</label>
-          <div style="display:flex">
-            <input v-model="newGreeting" autocomplete="off" id="greeting" style="flex:1" />
-            <button id="save" @click="saveSecret" style="border-radius:0 5px 5px 0">Save</button>
-          </div>
-        </fieldset>
-      </form>
-    </main>
-
-    <Notification
-      v-show="notificationVisible"
-      ref="notification"
-      :networkId="networkId"
-      :msg="'called method: set_greeting'"
-      :contractId="contractId"
-      :visible="false"
-    />
+    <Row>
+      <Col span="8"></Col>
+      <Col span="8">
+        <!-- button area -->
+        <Row style="margin-top: 40px;margin-bottom: 20px;">
+          <Col span="4" style="text-align: left">
+            <Button type="success" @click="modalVisible = true">Leave a secret</Button>
+          </Col>
+          <Col span="4" offset="16" style="text-align: right">
+            <Button @click="logout">Sign out</Button>
+          </Col>
+        </Row>
+        <Row>
+          <!-- card area -->
+          <Col span="24">
+            <Row style="margin-top: 20px;">
+              <Col span="24">
+                <Card>
+                  <Row>
+                    <p>Content of card1231231231 23123123123123</p>
+                  </Row>
+                  <Row style="margin-top:20px">
+                    <Col span="3"><Avatar shape="square" style="background-color: #87d068" icon="ios-person" /></Col>
+                    <Col span="20" style="display: flex; justify-content: left; align-items: center;">nobody</Col>
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+          </Col>
+        </Row>
+      </Col>
+      <Col span="8"></Col>
+    </Row>
+    <Modal
+      v-model="modalVisible"
+      title="I'll keep your secret."
+      @on-ok="ok"
+      :loading="true"
+      ok-text="That's it."
+      cancel-text="Maybe later"
+      @on-visible-change="visibleChange"
+    >
+      <Input v-model="secret" type="textarea" :rows="10" placeholder="Enter your secret..." style="width: 100%" />
+      <p style="height: 20px;"></p>
+      <Input v-model="name" placeholder="Your name (optional)" style="width: 300px" />
+    </Modal>
   </div>
 </template>
 
 <script>
 import { logout } from '../utils'
 
-import Notification from './Notification.vue'
-
 export default {
   name: 'SignedIn',
 
   beforeMount() {
     if (this.isSignedIn) {
-      this.retrieveSavedGreeting()
+      this.retrieveSecrets()
     }
-  },
-
-  components: {
-    Notification,
   },
 
   data: function() {
     return {
-      savedGreeting: '',
-      newGreeting: '',
+      secrets: [],
+      secret: '',
+      name: '',
       notificationVisible: false,
-      value: [20, 50],
+      modalVisible: false,
     }
   },
 
@@ -59,60 +78,49 @@ export default {
     accountId() {
       return window.accountId
     },
-    contractId() {
-      return window.contract ? window.contract.contractId : null
-    },
-    networkId() {
-      return window.networkId
-    },
   },
 
   methods: {
-    retrieveSavedGreeting() {
-      //retrieve greeting
-      window.contract.get_greeting({ account_id: window.accountId }).then((greetingFromContract) => {
-        this.savedGreeting = greetingFromContract
-        this.newGreeting = greetingFromContract
+    retrieveSecrets() {
+      window.contract.get_secrets().then((secrets) => {
+        this.secrets = secrets
       })
     },
 
-    saveSecret: async function() {
-      // fired on form submit button used to update the greeting
+    logout: logout,
 
-      // disable the form while the value gets updated on-chain
-      this.$refs.fieldset.disabled = true
+    async ok() {
+      // <!-- render from secrets -->
+      // impl two function
 
       try {
-        // make an update call to the smart contract
-        await window.contract.set_greeting({
-          // pass the new greeting
-          message: this.newGreeting,
-        })
+        await window.contract
+          .add_secret({
+            secret: this.secret,
+            name: this.name,
+          })
+          .then(function() {
+            this.$Notice.success({
+              title: 'Succeeded',
+            })
+            this.retrieveSecrets()
+          })
       } catch (e) {
-        alert(
-          'Something went wrong! ' +
-            'Maybe you need to sign out and back in? ' +
-            'Check your browser console for more info.'
-        )
-        throw e //re-throw
+        this.$Notice.error({
+          title: 'Something went wrong! ',
+          desc: 'Maybe you need to sign out and back in? Check your browser console for more info.',
+        })
+        throw e
       } finally {
-        // re-enable the form, whether the call succeeded or failed
-        this.$refs.fieldset.disabled = false
+        this.modalVisible = false
       }
-
-      // update savedGreeting with persisted value
-      this.savedGreeting = this.newGreeting
-
-      this.notificationVisible = true //show new notification
-
-      // remove Notification again after css animation completes
-      // this allows it to be shown again next time the form is submitted
-      setTimeout(() => {
-        this.notificationVisible = false
-      }, 11000)
     },
-
-    logout: logout,
+    visibleChange(show) {
+      if (!show) {
+        this.secret = ''
+        this.name = ''
+      }
+    },
   },
 }
 </script>

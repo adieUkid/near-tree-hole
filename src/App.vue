@@ -7,6 +7,7 @@
 
 <script>
 // import './global.css'
+import './my.css'
 import 'view-design/dist/styles/iview.css'
 import getConfig from './config'
 import SignedOut from './components/SignedOut.vue'
