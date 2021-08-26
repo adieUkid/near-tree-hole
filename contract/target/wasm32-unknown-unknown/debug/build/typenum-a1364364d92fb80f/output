@@ -1,2 +1,0 @@
-cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/a40620/Mine/mycode/try/near-contract/near-tree-hole/contract/target/wasm32-unknown-unknown/debug/build/typenum-a1364364d92fb80f/out/consts.rs
-cargo:rustc-env=TYPENUM_BUILD_OP=/Users/a40620/Mine/mycode/try/near-contract/near-tree-hole/contract/target/wasm32-unknown-unknown/debug/build/typenum-a1364364d92fb80f/out/op.rs
