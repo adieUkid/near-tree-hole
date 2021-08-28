@@ -1,8 +1,7 @@
-const CONTRACT_NAME = process.env.VUE_APP_CONTRACT_NAME ||'near-tree-hole'
+const CONTRACT_NAME = process.env.VUE_APP_CONTRACT_NAME || 'dev-1630168857905-2908007'
 
 function getConfig(env) {
   switch (env) {
-
     case 'production':
     case 'mainnet':
       return {

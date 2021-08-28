@@ -5,31 +5,26 @@
       <Col span="8">
         <!-- button area -->
         <Row style="margin-top: 40px;margin-bottom: 20px;">
-          <Col span="4" style="text-align: left">
+          <Col span="12" style="text-align: left">
             <Button type="success" @click="modalVisible = true">Leave a secret</Button>
           </Col>
-          <Col span="4" offset="16" style="text-align: right">
+          <Col span="12" style="text-align: right">
+            <div style="display: inline-block;line-height: 32px;margin-right:10px;">{{ accountId }}</div>
             <Button @click="logout">Sign out</Button>
           </Col>
         </Row>
-        <Row>
-          <!-- card area -->
-          <Col span="24">
-            <Row style="margin-top: 20px;">
-              <Col span="24">
-                <Card>
-                  <Row>
-                    <p>Content of card1231231231 23123123123123</p>
-                  </Row>
-                  <Row style="margin-top:20px">
-                    <Col span="3"><Avatar shape="square" style="background-color: #87d068" icon="ios-person" /></Col>
-                    <Col span="20" style="display: flex; justify-content: left; align-items: center;">nobody</Col>
-                  </Row>
-                </Card>
-              </Col>
+        <!-- card area -->
+        <div v-for="s in secrets" :key="s.id">
+          <Card style="margin-top: 20px;">
+            <Row>
+              <p>{{ s.content }}</p>
             </Row>
-          </Col>
-        </Row>
+            <Row style="margin-top:20px" v-if="s.name">
+              <Col span="3"><Avatar shape="square" style="background-color: #87d068" icon="ios-person" /></Col>
+              <Col span="20" style="display: flex; justify-content: left; align-items: center;">{{ s.name }}</Col>
+            </Row>
+          </Card>
+        </div>
       </Col>
       <Col span="8"></Col>
     </Row>
@@ -42,7 +37,8 @@
       cancel-text="Maybe later"
       @on-visible-change="visibleChange"
     >
-      <Input v-model="secret" type="textarea" :rows="10" placeholder="Enter your secret..." style="width: 100%" />
+      <!-- todo: valid -->
+      <Input v-model="content" type="textarea" :rows="10" placeholder="Enter your secret..." style="width: 100%" />
       <p style="height: 20px;"></p>
       <Input v-model="name" placeholder="Your name (optional)" style="width: 300px" />
     </Modal>
@@ -64,8 +60,9 @@ export default {
   data: function() {
     return {
       secrets: [],
-      secret: '',
+      content: '',
       name: '',
+      accountName: '',
       notificationVisible: false,
       modalVisible: false,
     }
@@ -90,21 +87,10 @@ export default {
     logout: logout,
 
     async ok() {
-      // <!-- render from secrets -->
-      // impl two function
-
       try {
-        await window.contract
-          .add_secret({
-            secret: this.secret,
-            name: this.name,
-          })
-          .then(function() {
-            this.$Notice.success({
-              title: 'Succeeded',
-            })
-            this.retrieveSecrets()
-          })
+        await window.contract.add_secret({ content: this.content, name: this.name })
+        this.$Notice.success({ title: 'Succeeded' })
+        this.retrieveSecrets()
       } catch (e) {
         this.$Notice.error({
           title: 'Something went wrong! ',
@@ -117,7 +103,7 @@ export default {
     },
     visibleChange(show) {
       if (!show) {
-        this.secret = ''
+        this.content = ''
         this.name = ''
       }
     },

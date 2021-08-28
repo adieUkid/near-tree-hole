@@ -1,58 +1,68 @@
-/*
- * This is an example of a Rust smart contract with two simple, symmetric functions:
- *
- * 1. set_greeting: accepts a greeting, such as "howdy", and records it for the user (account_id)
- *    who sent the request
- * 2. get_greeting: accepts an account_id and returns the greeting saved for it, defaulting to
- *    "Hello"
- *
- * Learn more about writing NEAR smart contracts with Rust:
- * https://github.com/near/near-sdk-rs
- *
- */
-
 // To conserve gas, efficient serialization is achieved through Borsh (http://borsh.io/)
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, near_bindgen, setup_alloc};
 use near_sdk::collections::LookupMap;
+use near_sdk::collections::Vector;
+use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{near_bindgen, setup_alloc};
+use uuid::Uuid;
 
 setup_alloc!();
 
-// Structs in Rust are similar to other languages, and may include impl keyword as shown below
-// Note: the names of the structs are not important when calling the smart contract, but the function names are
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Welcome {
-    records: LookupMap<String, String>,
+pub struct TreeHole {
+    secrets: LookupMap<String, Secret>,
+    queue: Vector<String>,
 }
 
-impl Default for Welcome {
-  fn default() -> Self {
-    Self {
-      records: LookupMap::new(b"a".to_vec()),
+impl Default for TreeHole {
+    fn default() -> Self {
+        Self {
+            secrets: LookupMap::new(b"s".to_vec()),
+            queue: Vector::new(b"q".to_vec()),
+        }
     }
-  }
 }
+
+#[derive(BorshDeserialize, BorshSerialize, Debug, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Secret {
+    id: String,
+    name: String,
+    content: String,
+}
+
+const PAGE_SIZE: usize = 10;
 
 #[near_bindgen]
-impl Welcome {
-    pub fn set_greeting(&mut self, message: String) {
-        let account_id = env::signer_account_id();
+impl TreeHole {
+    pub fn add_secret(&mut self, name: String, content: String) {
+        let my_uuid = Uuid::new_v4();
+        let s = Secret {
+            id: my_uuid.to_string(),
+            name,
+            content,
+        };
 
-        // Use env::log to record logs permanently to the blockchain!
-        env::log(format!("Saving greeting '{}' for account '{}'", message, account_id,).as_bytes());
-
-        self.records.insert(&account_id, &message);
+        self.secrets.insert(&s.id, &s);
+        self.queue.push(&s.id)
     }
 
-    // `match` is similar to `switch` in other languages; here we use it to default to "Hello" if
-    // self.records.get(&account_id) is not yet defined.
-    // Learn more: https://doc.rust-lang.org/book/ch06-02-match.html#matching-with-optiont
-    pub fn get_greeting(&self, account_id: String) -> String {
-        match self.records.get(&account_id) {
-            Some(greeting) => greeting,
-            None => "Hello".to_string(),
+    pub fn get_secrets(&self, page_num: usize) -> Vec<Secret> {
+        assert!(page_num > 0, "invalid page_num: {}", page_num);
+        let ids: Vec<String> = self
+            .queue
+            .iter()
+            .skip((page_num - 1) * PAGE_SIZE)
+            .take(PAGE_SIZE)
+            .collect();
+
+        let mut ss = vec![];
+        for id in ids {
+            let s = self.secrets.get(&id).unwrap();
+            ss.push(s);
         }
+        ss
     }
 }
 
@@ -96,26 +106,35 @@ mod tests {
     }
 
     #[test]
-    fn set_then_get_greeting() {
+    fn add_secret_and_get_it() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = Welcome::default();
-        contract.set_greeting("howdy".to_string());
-        assert_eq!(
-            "howdy".to_string(),
-            contract.get_greeting("bob_near".to_string())
-        );
+        let mut contract = TreeHole::default();
+        contract.add_secret("alan".to_string(), "test content".to_string());
+        let id = contract.queue.get(0).unwrap();
+        let s = contract.secrets.get(&id).unwrap();
+        assert_eq!("alan".to_string(), s.name);
+        assert_eq!("test content".to_string(), s.content);
     }
 
     #[test]
-    fn get_default_greeting() {
-        let context = get_context(vec![], true);
+    fn add_secret_and_get_secrets() {
+        let context = get_context(vec![], false);
         testing_env!(context);
-        let contract = Welcome::default();
-        // this test did not call set_greeting so should return the default "Hello" greeting
-        assert_eq!(
-            "Hello".to_string(),
-            contract.get_greeting("francis.near".to_string())
-        );
+        let mut contract = TreeHole::default();
+        contract.add_secret("alan".to_string(), "test content".to_string());
+        let secrets = contract.get_secrets(1);
+
+        println!("{:?}", secrets);
+        assert_eq!("alan".to_string(), secrets[0].name);
+        assert_eq!("test content".to_string(), secrets[0].content);
+    }
+    #[test]
+    #[should_panic]
+    fn invalid_page_num() {
+        let context = get_context(vec![], false);
+        testing_env!(context);
+        let contract = TreeHole::default();
+        let _ = contract.get_secrets(0);
     }
 }
