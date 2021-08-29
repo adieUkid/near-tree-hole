@@ -3,14 +3,20 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::collections::Vector;
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{near_bindgen, setup_alloc};
-use uuid::Uuid;
+use near_sdk::{near_bindgen, setup_alloc, BorshStorageKey};
 
 setup_alloc!();
+
+#[derive(BorshSerialize, BorshStorageKey)]
+enum StorageKeys {
+    Secrets,
+    Queue,
+}
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct TreeHole {
+    total: u64,
     secrets: LookupMap<String, Secret>,
     queue: Vector<String>,
 }
@@ -18,8 +24,9 @@ pub struct TreeHole {
 impl Default for TreeHole {
     fn default() -> Self {
         Self {
-            secrets: LookupMap::new(b"s".to_vec()),
-            queue: Vector::new(b"q".to_vec()),
+            total: 0,
+            secrets: LookupMap::new(StorageKeys::Secrets),
+            queue: Vector::new(StorageKeys::Queue),
         }
     }
 }
@@ -32,14 +39,22 @@ pub struct Secret {
     content: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct GetSecretOutput {
+    count: u64,
+    items: Vec<Secret>,
+}
+
 const PAGE_SIZE: usize = 10;
 
 #[near_bindgen]
 impl TreeHole {
     pub fn add_secret(&mut self, name: String, content: String) {
-        let my_uuid = Uuid::new_v4();
+        assert!(content != "", "invalid content: {}", content);
+
         let s = Secret {
-            id: my_uuid.to_string(),
+            id: self.gen_uuid(),
             name,
             content,
         };
@@ -48,11 +63,12 @@ impl TreeHole {
         self.queue.push(&s.id)
     }
 
-    pub fn get_secrets(&self, page_num: usize) -> Vec<Secret> {
+    pub fn get_secrets(&self, page_num: usize) -> GetSecretOutput {
         assert!(page_num > 0, "invalid page_num: {}", page_num);
-        let ids: Vec<String> = self
-            .queue
+        let ids = self.queue.to_vec();
+        let ids: Vec<&String> = ids
             .iter()
+            .rev()
             .skip((page_num - 1) * PAGE_SIZE)
             .take(PAGE_SIZE)
             .collect();
@@ -62,7 +78,15 @@ impl TreeHole {
             let s = self.secrets.get(&id).unwrap();
             ss.push(s);
         }
-        ss
+        GetSecretOutput {
+            count: self.queue.len(),
+            items: ss,
+        }
+    }
+
+    fn gen_uuid(&mut self) -> String {
+        self.total = self.total + 1;
+        format!("{}", self.total)
     }
 }
 
@@ -106,28 +130,20 @@ mod tests {
     }
 
     #[test]
-    fn add_secret_and_get_it() {
-        let context = get_context(vec![], false);
-        testing_env!(context);
-        let mut contract = TreeHole::default();
-        contract.add_secret("alan".to_string(), "test content".to_string());
-        let id = contract.queue.get(0).unwrap();
-        let s = contract.secrets.get(&id).unwrap();
-        assert_eq!("alan".to_string(), s.name);
-        assert_eq!("test content".to_string(), s.content);
-    }
-
-    #[test]
     fn add_secret_and_get_secrets() {
         let context = get_context(vec![], false);
         testing_env!(context);
         let mut contract = TreeHole::default();
-        contract.add_secret("alan".to_string(), "test content".to_string());
+        contract.add_secret("alan".to_string(), "alan's content".to_string());
+        contract.add_secret("bob".to_string(), "bob's content".to_string());
         let secrets = contract.get_secrets(1);
 
         println!("{:?}", secrets);
-        assert_eq!("alan".to_string(), secrets[0].name);
-        assert_eq!("test content".to_string(), secrets[0].content);
+        assert_eq!(2, secrets.count);
+        assert_eq!("bob".to_string(), secrets.items[0].name);
+        assert_eq!("alan".to_string(), secrets.items[1].name);
+        assert_eq!("bob's content".to_string(), secrets.items[0].content);
+        assert_eq!("alan's content".to_string(), secrets.items[1].content);
     }
     #[test]
     #[should_panic]
